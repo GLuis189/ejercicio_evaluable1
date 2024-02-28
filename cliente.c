@@ -1,0 +1,1 @@
+// Código del cliente - nada de colas y funciones como si fuesen locales
