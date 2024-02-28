@@ -22,6 +22,7 @@
 //     char status;
 // };
 
+
 int init(){
     mqd_t q_servidor;
     mqd_t q_cliente;
@@ -29,7 +30,7 @@ int init(){
     struct peticion p;
     struct respuesta r;
 
-    // QUE ES ESTO?
+    // Atributos de la cola
     struct mq_attr attr;
     attr.mq_maxmsg = 1;     
 	attr.mq_msgsize = sizeof(struct peticion);
@@ -41,18 +42,18 @@ int init(){
 		perror("mq_open cliente");
 		return -1;
 	}
-    q_servidor = mq_open("/S-100472006", O_WRONLY);
+    q_servidor = mq_open(SERVIDOR, O_WRONLY);
     if (q_servidor == -1){
 		mq_close(q_cliente);
 		perror("mq_open servitor");
 		return -1;
 	}
 
-    // REALIZAR LA PETICION
+    // Realizar la petición
     p.op = 0;
 	strcpy(p.q_name, queuename);
 
-    // ENVIAR PETICION
+    // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
 		perror("mq_send");
 		r.status = -1;
@@ -61,9 +62,9 @@ int init(){
 		perror("mq_recv");
 		r.status = -1;
 	}
-    // mq_close(q_servidor);
-    // mq_close(q_cliente);
-    // mq_unlink(queuename);
+    mq_close(q_servidor);
+    mq_close(q_cliente);
+    mq_unlink(queuename);
 
     return r.status;
 

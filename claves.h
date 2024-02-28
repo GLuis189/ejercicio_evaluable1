@@ -11,6 +11,8 @@
 #define DELETE  4
 #define EXIST   5
 
+#define SERVIDOR "/S-100472006"
+
 // peticion
 struct peticion{
     int op;
