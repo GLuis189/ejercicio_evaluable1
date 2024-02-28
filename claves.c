@@ -61,9 +61,9 @@ int init(){
 		perror("mq_recv");
 		r.status = -1;
 	}
-    mq_close(q_servidor);
-    mq_close(q_cliente);
-    mq_unlink(queuename);
+    // mq_close(q_servidor);
+    // mq_close(q_cliente);
+    // mq_unlink(queuename);
 
     return r.status;
 
