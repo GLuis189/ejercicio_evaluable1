@@ -50,7 +50,7 @@ int init(){
 	}
 
     // Realizar la petición
-    p.op = 0;
+    p.op = INIT;
 	strcpy(p.q_name, queuename);
 
     // Envio de la petición
