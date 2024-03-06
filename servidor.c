@@ -48,14 +48,19 @@ int init(){
 
 int main(){
     struct peticion mess;
+    struct respuesta r;
     struct mq_attr attr;
 
     pthread_attr_t t_attr;
     pthread_t thread;
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct peticion);
-
+    if (sizeof(struct peticion) > sizeof(struct respuesta)){
+        attr.mq_msgsize = sizeof(struct peticion);
+    }
+    else{
+        attr.mq_msgsize = sizeof(struct respuesta);
+    }
     q_servidor = mq_open(SERVIDOR, O_CREAT|O_RDONLY, 0700, &attr);
     if (q_servidor == -1){
         perror("mq_open servidor");
@@ -79,6 +84,10 @@ int main(){
 				pthread_cond_wait(&cond_mensaje, &mutex_mensaje);
 			mensaje_no_copiado = true;
 			pthread_mutex_unlock(&mutex_mensaje);
+        }
+        r.status = 0;
+        if (mq_send(q_servidor, (const char *)&r, sizeof(r), 0) < 0){
+            perror("mq_send");
         }
     }
     mq_close(q_servidor);
