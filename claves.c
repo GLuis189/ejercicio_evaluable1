@@ -32,24 +32,20 @@ int init(){
 
     // Atributos de la cola
     struct mq_attr attr;
-    attr.mq_maxmsg = 1;
-    if (sizeof(struct peticion) > sizeof(struct respuesta)){
-        attr.mq_msgsize = sizeof(struct peticion);
-    }
-    else{
-        attr.mq_msgsize = sizeof(struct respuesta);
-    }
     char queuename[MAX];
+    attr.mq_maxmsg = 1;
+    attr.mq_msgsize = sizeof(p);
+   
     sprintf(queuename,  "/Cola-%d", getpid());
 	q_cliente = mq_open(queuename, O_CREAT|O_RDONLY, 0700, &attr);
     if (q_cliente == -1) {
-		perror("mq_open cliente");
+		perror("mq_open 1");
 		return -1;
 	}
     q_servidor = mq_open(SERVIDOR, O_WRONLY);
     if (q_servidor == -1){
 		mq_close(q_cliente);
-		perror("mq_open servitor");
+		perror("mq_open 2");
 		return -1;
 	}
 
@@ -68,6 +64,6 @@ int init(){
 	}
     mq_close(q_servidor);
     mq_close(q_cliente);
-    mq_unlink(queuename);
+    // mq_unlink(queuename);
     return r.result;
 }
