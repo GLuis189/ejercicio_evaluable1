@@ -8,7 +8,7 @@
 
 int main(){
     if (init() == 0){
-        printf("Inicializado\n");
+        printf("Inicializado cliente\n");
     };
     return 0;
 }

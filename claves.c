@@ -30,18 +30,26 @@ int init(){
     struct peticion p;
     struct respuesta r;
 
+    printf("Sizeof struct peticion: %lu\n", sizeof(struct peticion));
+    printf("Sizeof struct respuesta: %lu\n", sizeof(struct respuesta));
+
+
     // Atributos de la cola
     struct mq_attr attr;
     char queuename[MAX];
     attr.mq_maxmsg = 1;
-    attr.mq_msgsize = sizeof(p);
-   
+    attr.mq_msgsize = sizeof(struct peticion) + 10; //Tamaño del mensaje
+
     sprintf(queuename,  "/Cola-%d", getpid());
 	q_cliente = mq_open(queuename, O_CREAT|O_RDONLY, 0700, &attr);
     if (q_cliente == -1) {
 		perror("mq_open 1");
 		return -1;
 	}
+
+    mq_getattr(q_cliente, &attr);
+    printf("mq_maxmsg: %ld, mq_msgsize: %ld\n", attr.mq_maxmsg, attr.mq_msgsize);
+
     q_servidor = mq_open(SERVIDOR, O_WRONLY);
     if (q_servidor == -1){
 		mq_close(q_cliente);
@@ -58,10 +66,17 @@ int init(){
 		perror("mq_send");
 		r.status = -1;
 	}	
-    if (mq_receive(q_cliente, (char *) &r, sizeof(r), 0) < 0){
-		perror("mq_recv");
-		r.status = -1;
-	}
+    /*if (mq_receive(q_cliente, (char *) &r, sizeof(r), 0) < 0){
+        perror("mq_recv");
+        r.status = -1;
+    }*/
+    char buffer[attr.mq_msgsize];
+
+    if (mq_receive(q_cliente, buffer, sizeof(buffer), 0) < 0){
+        perror("mq_recv");
+        r.status = -1;
+    }
+    
     mq_close(q_servidor);
     mq_close(q_cliente);
     // mq_unlink(queuename);
