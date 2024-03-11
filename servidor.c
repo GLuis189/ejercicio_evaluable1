@@ -7,17 +7,95 @@
 #include <string.h>
 #include "claves.h"
 
+#define MAX_LONGITUD 256
+#define MAX_ELEMENTOS 32
 
 pthread_mutex_t mutex_mensaje;
 int mensaje_no_copiado = true;
 pthread_cond_t cond_mensaje;
 mqd_t  q_servidor;
 
+#define MAX_TUPLAS 100 // Define el máximo número de tuplas que se pueden almacenar
 
+// Estructura para representar una tupla <clave-valor1-valor2>
+typedef struct {
+    int clave;
+    char valor1[256];
+    int N;
+    double *vector;
+} Tupla;
+
+// Definición del vector global para almacenar las tuplas
+Tupla tuplas[MAX_TUPLAS];
+int numTuplas = 0; // Variable global para almacenar el número actual de tuplas
+
+// Definición de la variable global para el nombre del archivo
+char filename[FILENAME_MAX];
+
+// Función para escribir las tuplas en un archivo de texto
+void escribirTuplas() {
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL) {
+        printf("Error al abrir el archivo para escribir.\n");
+        return;
+    }
+
+    for (int i = 0; i < numTuplas; i++) {
+        fprintf(fp, "%d,%s,%d", tuplas[i].clave, tuplas[i].valor1, tuplas[i].N);
+        for (int j = 0; j < tuplas[i].N; j++) {
+            fprintf(fp, ",%.2f", tuplas[i].vector[j]);
+        }
+        fprintf(fp, "\n");
+    }
+
+    fclose(fp);
+}
+
+// Función para leer las tuplas desde un archivo de texto
+void leerTuplas() {
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        printf("Error al abrir el archivo para leer.\n");
+        return;
+    }
+
+    while (!feof(fp) && numTuplas < MAX_TUPLAS) {
+        Tupla t;
+        int result = fscanf(fp, "%d,%[^,],%d", &t.clave, t.valor1, &t.N);
+        if (result == EOF) {
+            break;
+        }
+        t.vector = (double *)malloc(t.N * sizeof(double));
+        for (int i = 0; i < t.N; i++) {
+            fscanf(fp, ",%lf", &t.vector[i]);
+        }
+        tuplas[numTuplas++] = t; // Almacena la tupla en el vector global
+    }
+
+    fclose(fp);
+}
 
 int r_init(){   
     printf("Inicializado\n");
+    strcpy(filename, "datos.txt");
+    remove(filename);
+    escribirTuplas();
+    leerTuplas();
+    return 0;
+}
 
+int r_set_value(int key, char *value1, int N_value, double *V_value){
+    printf("Set value\n");
+    Tupla t;
+    t.clave = key;
+    strcpy(t.valor1, value1);
+    t.N = N_value;
+    t.vector = (double *)malloc(N_value * sizeof(double));
+    for (int i = 0; i < N_value; i++) {
+        t.vector[i] = V_value[i];
+    }
+    tuplas[numTuplas++] = t;
+    escribirTuplas();
     return 0;
 }
 
@@ -26,10 +104,17 @@ void tratar_peticion(struct peticion *p){
     switch (p->op){
         case INIT:
             r.result = r_init();
+            if (r.result == 0){
+                r.status = 0;
+            }
             break;
-        // case SET:
-        //     r->result = set_value(p->key, p->value1, p->N_value, p->V_value);
-        //     break;
+        case SET:
+            printf("Set valuasdasde\n");
+            r.result = r_set_value(p->key, p->value1, p->N_value, &p->V_value);
+            if (r.result == 0){
+                r.status = 0;
+            }
+            break;
         // case GET:
         //     r->result = get_value(p->key, p->value1, &p->N_value, &p->V_value);
         //     break;
@@ -59,7 +144,6 @@ void tratar_peticion(struct peticion *p){
     else {
          printf("Cola del cliente abierta correctamente.\n");
         
-
         if (mq_send(q_cliente, (const char *) &r, sizeof(struct respuesta), 0) <0) {
             perror("mq_send");
             mq_close(q_servidor);

@@ -31,7 +31,7 @@ struct respuesta{
 
 // Funciones
 int init();
-// int set_value(int key, char *value, int N_value, double V_value);
+int set_value(int key, char *value, int N_value, double *V_value);
 // int get_value(int key, char *value, int *N_value, double *V_value);
 // int modify_value(int key, char *value, int N_value, double V_value);
 // int delete_key(int key);
