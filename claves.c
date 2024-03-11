@@ -118,7 +118,7 @@ int set_value(int key, char *value, int N_value, double *V_value){
         perror("mq_open 2");
         return -1;
     }
-
+    printf("a1\n");
     strcpy(p.q_name, queuename);
 
     // Envio de la petición
@@ -127,10 +127,13 @@ int set_value(int key, char *value, int N_value, double *V_value){
         r.status = -1;
     }
 
+    printf("a2\n");
+
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
         r.status = -1;
     }
+    printf("a3\n");
 
     mq_close(q_servidor);
     mq_close(q_cliente);

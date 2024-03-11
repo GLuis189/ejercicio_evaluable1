@@ -151,6 +151,7 @@ void tratar_peticion(struct peticion *p){
             mq_close(q_cliente);
         }
     }
+    printf("t1\n");
     pthread_exit(0);
     mq_close(q_cliente);
 }

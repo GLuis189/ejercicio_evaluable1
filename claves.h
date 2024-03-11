@@ -19,7 +19,7 @@ struct peticion{
     int key;
     char value1[MAX];
     int N_value;
-    double V_value;
+    double V_value[32];
     char q_name[MAX];
 };
 
