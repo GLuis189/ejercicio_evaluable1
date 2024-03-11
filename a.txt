@@ -1,0 +1,107 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_LONGITUD 256
+#define MAX_ELEMENTOS 32
+
+// Función para verificar si una clave ya existe en el archivo
+int clave_existe(int clave) {
+    FILE *archivo = fopen("base_datos.txt", "r");
+    if (archivo == NULL) {
+        return 0; // Si no se puede abrir el archivo, se asume que la clave no existe
+    }
+
+    int temp_clave;
+    while (fscanf(archivo, "%d", &temp_clave) != EOF) {
+        if (temp_clave == clave) {
+            fclose(archivo);
+            return 1; // La clave ya existe
+        }
+        // Saltar el resto de la línea
+        char temp[MAX_LONGITUD + 10]; // +10 por si hay un valor2 muy largo
+        fgets(temp, MAX_LONGITUD + 10, archivo);
+    }
+    fclose(archivo);
+    return 0; // La clave no existe
+}
+
+// Servicio para insertar una tupla en el archivo
+int set_value(int key, char *value1, int N_value2, double *V_value2) {
+    if (clave_existe(key) || N_value2 < 1 || N_value2 > MAX_ELEMENTOS) {
+        return -1; // Error: clave duplicada o N_value2 fuera de rango
+    }
+
+    FILE *archivo = fopen("base_datos.txt", "a");
+    if (archivo == NULL) {
+        return -1; // Error: no se pudo abrir el archivo
+    }
+
+    fprintf(archivo, "%d %s %d ", key, value1, N_value2);
+    for (int i = 0; i < N_value2; i++) {
+        fprintf(archivo, "%.2f ", V_value2[i]);
+    }
+    fprintf(archivo, "\n");
+    
+    fclose(archivo);
+    return 0; // Éxito
+}
+
+// Servicio para obtener los valores asociados a una clave desde el archivo
+int get_value(int key, char *value1, int *N_value2, double *V_value2) {
+    FILE *archivo = fopen("base_datos.txt", "r");
+    if (archivo == NULL) {
+        return -1; // Error: no se pudo abrir el archivo
+    }
+
+    int temp_clave, temp_N_value2;
+    char temp_value1[MAX_LONGITUD];
+    while (fscanf(archivo, "%d %s %d", &temp_clave, temp_value1, &temp_N_value2) != EOF) {
+        if (temp_clave == key) {
+            strcpy(value1, temp_value1);
+            *N_value2 = temp_N_value2;
+            for (int i = 0; i < temp_N_value2; i++) {
+                fscanf(archivo, "%lf", &V_value2[i]);
+            }
+            fclose(archivo);
+            return 0; // Éxito
+        }
+        // Saltar el resto de la línea
+        for (int i = 0; i < temp_N_value2; i++) {
+            double temp_double;
+            fscanf(archivo, "%lf", &temp_double);
+        }
+    }
+    fclose(archivo);
+    return -1; // Error: clave no encontrada
+}
+
+// Servicio para modificar los valores asociados a una clave en el archivo
+int modify_value(int key, char *value1, int N_value2, double *V_value2) {
+    FILE *archivo_lectura = fopen("base_datos.txt", "r");
+    if (archivo_lectura == NULL) {
+        return -1; // Error: no se pudo abrir el archivo
+    }
+
+    FILE *archivo_temp = fopen("temp.txt", "w");
+    if (archivo_temp == NULL) {
+        fclose(archivo_lectura);
+        return -1; // Error: no se pudo crear el archivo temporal
+    }
+
+    int temp_clave, temp_N_value2;
+    char temp_value1[MAX_LONGITUD];
+    while (fscanf(archivo_lectura, "%d %s %d", &temp_clave, temp_value1, &temp_N_value2) != EOF) {
+        if (temp_clave == key) {
+            // Modificar los valores asociados a la clave
+            fprintf(archivo_temp, "%d %s %d ", key, value1, N_value2);
+            for (int i = 0; i < N_value2; i++) {
+                fprintf(archivo_temp, "%.2f ", V_value2[i]);
+            }
+            fprintf(archivo_temp, "\n");
+        } else {
+            // Escribir la línea tal cual
+            fprintf(archivo_temp, "%d %s %d ", temp_clave, temp_value1, temp_N_value2);
+            for (int i = 0; i < temp_N_value2; i++) {
+                double temp_double;
+                fscanf(archivo_lectura, "%lf", &temp_double);
+                fprintf(

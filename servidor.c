@@ -8,16 +8,24 @@
 #include "claves.h"
 
 
-/*pthread_mutex_t mutex_mensaje;
+pthread_mutex_t mutex_mensaje;
 int mensaje_no_copiado = true;
 pthread_cond_t cond_mensaje;
 mqd_t  q_servidor;
+
+
+
+int r_init(){   
+    printf("Inicializado\n");
+
+    return 0;
+}
 
 void tratar_peticion(struct peticion *p){
     struct respuesta r;
     switch (p->op){
         case INIT:
-            r.result = init();
+            r.result = r_init();
             break;
         // case SET:
         //     r->result = set_value(p->key, p->value1, p->N_value, p->V_value);
@@ -60,15 +68,8 @@ void tratar_peticion(struct peticion *p){
         }
     }
     pthread_exit(0);
+    mq_close(q_cliente);
 }
-
-int init(){
-    if (init() == 0){
-        printf("Inicializado\n");
-    };
-    return 0;
-}
-
 
 int main(){
     struct peticion mess;
@@ -78,7 +79,7 @@ int main(){
     pthread_t thread;
 
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct peticion) + 10;
+    attr.mq_msgsize = sizeof(struct peticion);
 
     //printf("Sizeof struct respuesta servidor: %lu\n", sizeof(struct respuesta));
     printf("Sizeof struct peticion servidor: %lu\n", sizeof(struct peticion));
@@ -97,7 +98,7 @@ int main(){
 
     while (1){
         
-        if (mq_receive(q_servidor, (char *) &mess, sizeof(mess), 0) < 0){
+        if (mq_receive(q_servidor, (char *) &mess, sizeof(struct peticion) + 10, 0) < 0){
             perror("mq_receive");
             return -1;
         }
@@ -109,11 +110,14 @@ int main(){
 			pthread_mutex_unlock(&mutex_mensaje);
         }
     }
+
+    mq_close(q_servidor);
+    mq_unlink(SERVIDOR);
     return 0;
-}*/
+}
 
 
-pthread_mutex_t mutex_mensaje;
+/*pthread_mutex_t mutex_mensaje;
 int mensaje_no_copiado = true;
 pthread_cond_t cond_mensaje;
 mqd_t  q_servidor;
@@ -122,7 +126,7 @@ void tratar_peticion(struct peticion *p){
     struct respuesta r;
     switch (p->op){
         case INIT:
-            r.result = 0; // Aquí deberías poner el resultado de la operación INIT
+            r.result = r_init(); // Aquí deberías poner el resultado de la operación INIT
             break;
     }
     mqd_t q_cliente = mq_open(p->q_name, O_WRONLY);
@@ -143,7 +147,7 @@ void tratar_peticion(struct peticion *p){
     pthread_exit(0);
 }
 
-int init(){
+int r_init(){
     printf("Inicializado\n");
     return 0;
 }
@@ -153,7 +157,7 @@ int main(){
     pthread_attr_t t_attr;
     pthread_t thread;
     attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(struct peticion) + 10;
+    attr.mq_msgsize = sizeof(struct peticion);
 
     printf("Sizeof struct peticion servidor: %lu\n", sizeof(struct peticion));
 
@@ -174,7 +178,7 @@ int main(){
             perror("malloc");
             return -1;
         }
-        if (mq_receive(q_servidor, (char *) mess, sizeof(*mess), 0) < 0){
+        if (mq_receive(q_servidor, (char *) mess, sizeof(*mess) + 10, 0) < 0){
             perror("mq_receive");
             return -1;
         }
@@ -187,4 +191,4 @@ int main(){
         }
     }
     return 0;
-}
+}*/
