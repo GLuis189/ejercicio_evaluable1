@@ -93,8 +93,8 @@ int set_value(int key, char *value, int N_value, double *V_value){
     p.op = SET;
     p.key = key;
     strcpy(p.value1, value);
-    p.N_value = N_value;
-    p.V_value = *V_value;
+    //p.N_value = N_value;
+    //p.V_value = *V_value;
 
     // Atributos de la cola
     struct mq_attr attr;

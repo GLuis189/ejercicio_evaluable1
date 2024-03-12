@@ -154,9 +154,52 @@ void tratar_peticion(struct peticion *p){
     printf("t1\n");
     pthread_exit(0);
     mq_close(q_cliente);
+
+    free(p);
 }
 
 int main(){
+    struct peticion *p;
+    struct mq_attr attr;
+    pthread_attr_t t_attr;
+    pthread_t thread;
+
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof(struct peticion);
+
+    printf("Sizeof struct peticion servidor: %lu\n", sizeof(struct peticion));
+
+    q_servidor = mq_open(SERVIDOR, O_CREAT|O_RDONLY, 0700, &attr);
+    if (q_servidor == -1){
+        perror("mq_open servidor");
+        return -1;
+    }
+
+    pthread_mutex_init(&mutex_mensaje, NULL);
+    pthread_cond_init(&cond_mensaje, NULL);
+    pthread_attr_init(&t_attr);
+
+    pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+
+    while (1){
+        p = malloc(sizeof(struct peticion));
+        if (mq_receive(q_servidor, (char *) p, sizeof(struct peticion) + 10, 0) < 0){
+            perror("mq_receive");
+            free(p);
+            return -1;
+        }
+        if (pthread_create(&thread, &t_attr, (void *) tratar_peticion, (void *) p) != 0){
+            perror("pthread_create");
+            free(p);
+        }
+    }
+
+    mq_close(q_servidor);
+    mq_unlink(SERVIDOR);
+    return 0;
+}
+
+/*int main(){
     struct peticion mess;
     struct mq_attr attr;
 
@@ -194,12 +237,13 @@ int main(){
 			mensaje_no_copiado = true;
 			pthread_mutex_unlock(&mutex_mensaje);
         }
+        
     }
 
     mq_close(q_servidor);
     mq_unlink(SERVIDOR);
     return 0;
-}
+}*/
 
 
 /*pthread_mutex_t mutex_mensaje;
