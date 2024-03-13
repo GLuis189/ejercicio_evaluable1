@@ -1,6 +1,6 @@
 # Makefile para compilar cliente, servidor y crear libclaves.so
 # Nombres de los archivos binarios
-BIN_FILES = cliente servidor
+BIN_FILES = cliente cliente2 servidor
 
 # Compilador y opciones
 CC = gcc
@@ -15,6 +15,10 @@ all: $(BIN_FILES) libclaves.so
 
 # Reglas para compilar cliente y servidor
 cliente: cliente.o libclaves.so
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+# Reglas para compilar cliente y servidor
+cliente2: cliente2.o libclaves.so
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 servidor: servidor.o libclaves.so
