@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include "mensajes.h"
 #include "claves.h"
 
 #define MAX_LONGITUD 256
@@ -14,6 +15,8 @@ pthread_mutex_t mutex_mensaje;
 int mensaje_no_copiado = true;
 pthread_cond_t cond_mensaje;
 mqd_t  q_servidor;
+
+pthread_mutex_t mutex_numTuplas;
 
 #define MAX_TUPLAS 100 // Define el máximo número de tuplas que se pueden almacenar
 
@@ -27,16 +30,26 @@ typedef struct {
 
 // Definición del vector global para almacenar las tuplas
 Tupla tuplas[MAX_TUPLAS];
+int keys[MAX_TUPLAS]; // Array para almacenar las claves
 int numTuplas = 0; // Variable global para almacenar el número actual de tuplas
 
 // Definición de la variable global para el nombre del archivo
 char filename[FILENAME_MAX];
 
 // Función para escribir las tuplas en un archivo de texto
+
+pthread_mutex_t mutex_tuplas = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_archivo = PTHREAD_MUTEX_INITIALIZER;
+
+
+// Función para escribir las tuplas en un archivo de texto
 void escribirTuplas() {
+    pthread_mutex_lock(&mutex_archivo);
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) {
         printf("Error al abrir el archivo para escribir.\n");
+        pthread_mutex_unlock(&mutex_archivo);
         return;
     }
 
@@ -49,14 +62,16 @@ void escribirTuplas() {
     }
 
     fclose(fp);
+    pthread_mutex_unlock(&mutex_archivo);
 }
-
 
 // Función para leer las tuplas desde un archivo de texto
 void leerTuplas() {
+    pthread_mutex_lock(&mutex_archivo);
     FILE *fp = fopen(filename, "r");
     if (fp == NULL) {
         printf("Error al abrir el archivo para leer.\n");
+        pthread_mutex_unlock(&mutex_archivo);
         return;
     }
 
@@ -70,31 +85,44 @@ void leerTuplas() {
         for (int i = 0; i < t.N; i++) {
             fscanf(fp, ",%lf", &t.vector[i]);
         }
-        tuplas[numTuplas++] = t; // Almacena la tupla en el vector global
+        pthread_mutex_lock(&mutex_tuplas);
+        pthread_mutex_lock(&mutex_keys);
+        tuplas[numTuplas] = t;
+        keys[numTuplas] = t.clave;
+        numTuplas++;
+        pthread_mutex_unlock(&mutex_keys);
+        pthread_mutex_unlock(&mutex_tuplas);
     }
 
     fclose(fp);
+    pthread_mutex_unlock(&mutex_archivo);
 }
+
 
 int r_init(){   
     printf("Inicializado\n");
+
     strcpy(filename, "datos.txt");
     remove(filename);
     escribirTuplas();
-    leerTuplas();
+    leerTuplas();    
     return 0;
 }
 
-int keys[MAX_TUPLAS]; // Array para almacenar las claves
 
 int r_set_value(int key, char *value1, int N_value, double *V_value){
-    printf("Set value\n");
+    pthread_mutex_lock(&mutex_tuplas);
+    pthread_mutex_lock(&mutex_numTuplas);
+    pthread_mutex_lock(&mutex_keys);
 
     // Buscar si la clave ya existe
     for (int i = 0; i < numTuplas; i++) {
         if (keys[i] == key) {
             // Si la clave ya existe, imprimir un mensaje de error y devolver un código de error
             printf("Error set_value: Ya existe una tupla con la clave %d\n", key);
+            pthread_mutex_unlock(&mutex_tuplas);
+            pthread_mutex_unlock(&mutex_numTuplas);
+            pthread_mutex_unlock(&mutex_keys);
             return -1;
         }
     }
@@ -112,11 +140,22 @@ int r_set_value(int key, char *value1, int N_value, double *V_value){
     keys[numTuplas] = key; // Añadir la clave al array de claves
     numTuplas++;
     escribirTuplas();
+
+    pthread_mutex_unlock(&mutex_tuplas);
+    pthread_mutex_unlock(&mutex_numTuplas);
+    pthread_mutex_unlock(&mutex_keys);
+    
     return 0;
 }
 
+
 int r_get_value(int key, char *value1, int *N_value, double *V_value){
     printf("Get value\n");
+
+    pthread_mutex_lock(&mutex_tuplas);
+    pthread_mutex_lock(&mutex_numTuplas);
+    pthread_mutex_lock(&mutex_keys);
+    
     for (int i = 0; i < numTuplas; i++) {
         if (keys[i] == key) {
             strcpy(value1, tuplas[i].valor1);
@@ -124,15 +163,26 @@ int r_get_value(int key, char *value1, int *N_value, double *V_value){
             for (int j = 0; j < tuplas[i].N; j++) {
                 V_value[j] = tuplas[i].vector[j];
             }
+
+            pthread_mutex_unlock(&mutex_tuplas);
+            pthread_mutex_unlock(&mutex_numTuplas);
+            pthread_mutex_unlock(&mutex_keys);
+    
             return 0;
         }
     }
     printf("Error get_value: No existe una tupla con la clave %d\n", key);
+    
     return -1;
 }
 
 int r_modify_value(int key, char *value1, int N_value, double *V_value){
     printf("Modify value\n");
+
+    pthread_mutex_lock(&mutex_tuplas);
+    pthread_mutex_lock(&mutex_numTuplas);
+    pthread_mutex_lock(&mutex_keys);
+    
     for (int i = 0; i < numTuplas; i++) {
         if (keys[i] == key) {
             strcpy(tuplas[i].valor1, value1);
@@ -141,15 +191,28 @@ int r_modify_value(int key, char *value1, int N_value, double *V_value){
                 tuplas[i].vector[j] = V_value[j];
             }
             escribirTuplas();
+
+            pthread_mutex_unlock(&mutex_tuplas);
+            pthread_mutex_unlock(&mutex_numTuplas);
+            pthread_mutex_unlock(&mutex_keys);
+
             return 0;
         }
     }
     printf("Error modify_value: No existe una tupla con la clave %d\n", key);
+
+    
+
     return -1;
 }
 
 int r_delete_key(int key){
     printf("Delete key\n");
+
+    pthread_mutex_lock(&mutex_tuplas);
+    pthread_mutex_lock(&mutex_numTuplas);
+    pthread_mutex_lock(&mutex_keys);
+
     for (int i = 0; i < numTuplas; i++) {
         if (keys[i] == key) {
             for (int j = i; j < numTuplas - 1; j++) {
@@ -158,6 +221,11 @@ int r_delete_key(int key){
             }
             numTuplas--;
             escribirTuplas();
+
+            pthread_mutex_unlock(&mutex_tuplas);
+            pthread_mutex_unlock(&mutex_numTuplas);
+            pthread_mutex_unlock(&mutex_keys);
+
             return 0;
         }
     }
@@ -166,47 +234,55 @@ int r_delete_key(int key){
 }
 
 int r_exist(int key){
+
+    pthread_mutex_lock(&mutex_tuplas);
+    pthread_mutex_lock(&mutex_numTuplas);
+    pthread_mutex_lock(&mutex_keys);
+    
     printf("Exist\n");
     for (int i = 0; i < numTuplas; i++) {
         if (keys[i] == key) {
             printf("si existe");
+
+            pthread_mutex_unlock(&mutex_tuplas);
+            pthread_mutex_unlock(&mutex_numTuplas);
+            pthread_mutex_unlock(&mutex_keys);
+
             return 0;
         }
     }
+
     return -1;
 }
 
 void tratar_peticion(struct peticion *p){
-    struct respuesta r;
+    int r;
     switch (p->op){
         case INIT:
-            r.result = r_init();
-            if (r.result == 0){
-                r.status = 0;
-            }
+            r = r_init();
             break;
         case SET:
-            r.result = r_set_value(p->key, p->value1, p->N_value, &p->V_value);
-            if (r.result == 0){
-                r.status = 0;
-            }
+            r = r_set_value(p->key, p->value1, p->N_value, &p->V_value);
             break;
         case GET:
-            r.result = r_get_value(p->key, p->value1, &p->N_value, &p->V_value);
+            r= r_get_value(p->key, p->value1, &p->N_value, &p->V_value);
             break;
         case MODIFY:
-            r.result = r_modify_value(p->key, p->value1, p->N_value, p->V_value);
+            r = r_modify_value(p->key, p->value1, p->N_value, p->V_value);
             break;
         case DELETE:
-            r.result = r_delete_key(p->key);
+            r = r_delete_key(p->key);
             break;
         case EXIST:
-            r.result = r_exist(p->key);
+            r = r_exist(p->key);
             break;
         default:
-            r.result = -1;
+            r = -1;
             break;
     }
+    pthread_mutex_unlock(&mutex_tuplas);
+    pthread_mutex_unlock(&mutex_numTuplas);
+    pthread_mutex_unlock(&mutex_keys);
 
 
     mqd_t q_cliente = mq_open(p->q_name, O_WRONLY);
@@ -220,7 +296,7 @@ void tratar_peticion(struct peticion *p){
     else {
          printf("Cola del cliente abierta correctamente.\n");
         
-        if (mq_send(q_cliente, (const char *) &r, sizeof(struct respuesta), 0) <0) {
+        if (mq_send(q_cliente, (const char *) &r, sizeof(int), 0) <0) {
             perror("mq_send");
             mq_close(q_servidor);
             mq_unlink(SERVIDOR);
@@ -253,6 +329,10 @@ int main(){
     pthread_mutex_init(&mutex_mensaje, NULL);
     pthread_cond_init(&cond_mensaje, NULL);
     pthread_attr_init(&t_attr);
+
+    pthread_mutex_init(&mutex_tuplas, NULL);
+    pthread_mutex_init(&mutex_numTuplas, NULL);
+    pthread_mutex_init(&mutex_keys, NULL);
 
     pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 

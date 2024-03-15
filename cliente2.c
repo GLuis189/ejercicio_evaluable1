@@ -7,7 +7,8 @@
 
 
 int main(){
-    // provar el set_value asi int set_value(int key, char *value1, int N_value2, double *V_value_2). 
+    // provar el set_value asi int set_value(int key, char *value1, int N_value2, double *V_value_2).
+    printf("c2");
     if(set_value(3, "hola c2", 33, (double[]){1.0, 2.0, 3.0}) == 0){
         printf("Seteado valor\n");
     }

@@ -4,23 +4,8 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "mensajes.h"
 #include "claves.h"
-
-// peticion
-// struct peticion{
-//     int op;
-//     int key;
-//     char value1[MAX];
-//     int N_value;
-//     double V_value;
-//     char q_name[MAX];
-// };
-
-// // respuesta = (valor. estado)
-// struct respuesta{
-//     int result;
-//     char status;
-// };
 
 
 int init(){
@@ -28,10 +13,10 @@ int init(){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
 
     printf("Sizeof struct peticion: %lu\n", sizeof(struct peticion));
-    printf("Sizeof struct respuesta: %lu\n", sizeof(struct respuesta));
+    printf("Sizeof struct respuesta: %lu\n", sizeof(int));
 
 
     // Atributos de la cola
@@ -63,11 +48,11 @@ int init(){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
 		perror("mq_send");
-		r.status = -1;
+		return -1;
 	}	
     if (mq_receive(q_cliente, (char *) &r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
     // char buffer[attr.mq_msgsize];
 
@@ -79,7 +64,7 @@ int init(){
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
-    return r.status;
+    return r;
 }
 
 int set_value(int key, char *value, int N_value, double *V_value){
@@ -87,7 +72,7 @@ int set_value(int key, char *value, int N_value, double *V_value){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
     if(N_value > 32 || N_value < 0){
         return -1;
     }
@@ -126,19 +111,19 @@ int set_value(int key, char *value, int N_value, double *V_value){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
         perror("mq_send");
-        r.status = -1;
+        return -1;
     }
 
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
 
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
-    printf("Status: %d\n", r.status);
-    return r.status;
+    // printf("Status: %d\n", r.status);
+    return r;
 }
 
 int get_value(int key, char *value, int *N_value, double *V_value){
@@ -146,7 +131,7 @@ int get_value(int key, char *value, int *N_value, double *V_value){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
 
     p.op = GET;
     p.key = key;
@@ -177,15 +162,15 @@ int get_value(int key, char *value, int *N_value, double *V_value){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
         perror("mq_send");
-        r.status = -1;
+        return -1;
     }
 
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
 
-    if(r.status == 0){
+    if(r == 0){
         strcpy(value, p.value1);
         *N_value = p.N_value;
         memcpy(V_value, p.V_value, sizeof(double) * p.N_value);
@@ -194,8 +179,8 @@ int get_value(int key, char *value, int *N_value, double *V_value){
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
-    printf("Status: %d\n", r.status);
-    return r.status;
+    // printf("Status: %d\n", r.status);
+    return r;
 }
 
 int modify_value(int key, char *value, int N_value, double *V_value){
@@ -203,7 +188,7 @@ int modify_value(int key, char *value, int N_value, double *V_value){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
 
     p.op = MODIFY;
     p.key = key;
@@ -237,21 +222,21 @@ int modify_value(int key, char *value, int N_value, double *V_value){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
         perror("mq_send");
-        r.status = -1;
+        return -1;
     }
 
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
 
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
 
-    printf("Status: %d\n", r.status);
+    // printf("Status: %d\n", r);
 
-    return r.status;
+    return r;
 }
 
 int delete_key(int key){
@@ -259,7 +244,7 @@ int delete_key(int key){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
 
     p.op = DELETE;
     p.key = key;
@@ -290,21 +275,21 @@ int delete_key(int key){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
         perror("mq_send");
-        r.status = -1;
+        return -1;
     }
 
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
 
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
 
-    printf("Status: %d\n", r.status);
+    // printf("Status: %d\n", r);
 
-    return r.status;
+    return r;
 }
 
 int exist(int key){
@@ -312,7 +297,7 @@ int exist(int key){
     mqd_t q_cliente;
 
     struct peticion p;
-    struct respuesta r;
+    int r;
 
     p.op = EXIST;
     p.key = key;
@@ -343,19 +328,19 @@ int exist(int key){
     // Envio de la petición
     if (mq_send(q_servidor, (const char *)&p, sizeof(p), 0) < 0){
         perror("mq_send");
-        r.status = -1;
+        return -1;
     }
 
     if (mq_receive(q_cliente, (char *)&r, sizeof(p), 0) < 0){
         perror("mq_recv");
-        r.status = -1;
+        return -1;
     }
 
     mq_close(q_servidor);
     mq_close(q_cliente);
     mq_unlink(queuename);
 
-    printf("Status: %d\n", r.result);
+    // printf("Status: %d\n", r);
 
-    return r.result;
+    return r;
 }
